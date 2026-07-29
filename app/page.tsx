@@ -102,7 +102,7 @@ export default function Home() {
 
           <label className="flex cursor-pointer items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 transition hover:border-violet-300">
             <span>
-              <span className="block font-bold text-slate-900">주제 넣기</span>
+              <span className="block font-bold text-slate-900">주제 보기</span>
             </span>
 
             <input
