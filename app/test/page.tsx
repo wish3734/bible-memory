@@ -62,6 +62,7 @@ function TestContent() {
   const [results, setResults] = useState<QuestionResult[]>([]);
   const [savedAnswers, setSavedAnswers] = useState<Record<number, string>>({});
   const [isFinished, setIsFinished] = useState(false);
+  const [isEarlyFinished, setIsEarlyFinished ] = useState(false);
   const [reviewMode, setReviewMode] = useState(false);
   const [reviewIndex, setReviewIndex] = useState(0);
 
@@ -149,6 +150,28 @@ function TestContent() {
     }
 
     moveToQuestion(currentIndex + 1);
+  }
+
+  function finishTestEarly() {
+    const answeredResults = results.filter(
+      (result): result is QuestionResult => Boolean(result)
+    );
+
+    if (answeredResults.length === 0) {
+      window.alert("아직 채점한 문제가 없습니다.");
+      return;
+    }
+
+    const shouldFinish = window.confirm(
+      "지금까지 채점한 문제만으로 시험을 끝내시겠습니까?"
+    );
+
+    if (!shouldFinish) {
+      return;
+    }
+
+    setIsEarlyFinished(true);
+    setIsFinished(true);
   }
 
   function restartWrongQuestions() {
@@ -321,13 +344,17 @@ function TestContent() {
   }
 
   if (isFinished) {
-    const correctCount = results.filter(
+    const answeredResults = results.filter(
+      (result): result is QuestionResult => Boolean(result)
+    );
+
+    const correctCount = answeredResults.filter(
       (result) => result.isCorrect
     ).length;
 
     const correctRate =
-      results.length > 0
-        ? Math.round((correctCount / results.length) * 100)
+      answeredResults.length > 0
+        ? Math.round((correctCount / answeredResults.length) * 100)
         : 0;
 
     return (
@@ -335,15 +362,15 @@ function TestContent() {
         <div className="mx-auto max-w-3xl">
           <section className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
             <p className="text-sm font-semibold text-blue-600">
-              시험 완료
+              {isEarlyFinished ? "시험 종료" : "시험 완료"}
             </p>
 
             <h1 className="mt-3 text-4xl font-bold">
-              {correctCount} / {results.length}
+              {correctCount} / {answeredResults.length}
             </h1>
 
             <p className="mt-3 text-slate-600">
-              총 {results.length}문제 중 {correctCount}문제를 맞혔습니다.
+              총 {answeredResults.length}문제 중 {correctCount}문제를 맞혔습니다.
             </p>
 
             <div className="mt-8 flex flex-col items-center">
@@ -369,7 +396,7 @@ function TestContent() {
             </div>
 
             <div className="mt-8 space-y-3">
-              {wrongResults.length > 0 && (
+              {!isEarlyFinished && wrongResults.length > 0 && (
                 <>
                   <button
                     type="button"
@@ -593,6 +620,14 @@ function TestContent() {
               </div>
             </div>
           )}
+
+          <button
+            type="button"
+            onClick={finishTestEarly}
+            className="mt-2 w-full rounded-xl bg-red-600 px-5 py-3 font-bold text-white transition hover:bg-red-500"
+          >
+            시험 끝내기
+          </button>
         </section>
       </div>
     </main>
