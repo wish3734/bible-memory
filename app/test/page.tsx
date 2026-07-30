@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { courseLimits } from "@/data/courseConfig";
 import { Verse, versesByDay } from "@/data/verses";
@@ -60,9 +60,12 @@ function TestContent() {
   const [answer, setAnswer] = useState("");
   const [isChecked, setIsChecked] = useState(false);
   const [results, setResults] = useState<QuestionResult[]>([]);
+  const [savedAnswers, setSavedAnswers] = useState<Record<number, string>>({});
   const [isFinished, setIsFinished] = useState(false);
   const [reviewMode, setReviewMode] = useState(false);
   const [reviewIndex, setReviewIndex] = useState(0);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const currentQuestion = questions[currentIndex];
 
@@ -71,15 +74,17 @@ function TestContent() {
 
   const wrongResults = results.filter((result) => !result.isCorrect);
 
-  function submitAnswer() {
-    if (!currentQuestion || answer.trim() === "") {
+  useEffect(() => {
+    if (!textareaRef.current) {
       return;
     }
 
-    setIsChecked(true);
-  }
+    textareaRef.current.style.height = "auto";
+    textareaRef.current.style.height =
+      `${textareaRef.current.scrollHeight}px`;
+  }, [answer]);
 
-  function goToNextQuestion() {
+  function submitAnswer() {
     if (!currentQuestion) {
       return;
     }
@@ -87,21 +92,63 @@ function TestContent() {
     const newResult: QuestionResult = {
       question: currentQuestion,
       answer,
-      isCorrect: currentIsCorrect,
+      isCorrect: checkAnswer(answer, currentQuestion.text),
     };
 
-    const updatedResults = [...results, newResult];
+    setResults((previousResults) => {
+      const updatedResults = [...previousResults];
 
-    setResults(updatedResults);
+      // 현재 문항 번호 자리에 결과 저장
+      updatedResults[currentIndex] = newResult;
+
+      return updatedResults;
+    });
+
+    setSavedAnswers((previousAnswers) => ({
+      ...previousAnswers,
+      [currentIndex]: answer,
+    }));
+
+    setIsChecked(true);
+  }
+
+  function moveToQuestion(targetIndex: number) {
+    if (targetIndex < 0 || targetIndex >= questions.length) {
+      return;
+    }
+
+    // 채점하지 않은 채 작성 중이던 내용도 임시 저장
+    setSavedAnswers((previousAnswers) => ({
+      ...previousAnswers,
+      [currentIndex]: answer,
+    }));
+
+    const savedResult = results[targetIndex];
+
+    setCurrentIndex(targetIndex);
+    setAnswer(
+      savedResult?.answer ??
+        savedAnswers[targetIndex] ??
+        ""
+    );
+    setIsChecked(Boolean(savedResult));
+  }
+
+  function goToPreviousQuestion() {
+    moveToQuestion(currentIndex - 1);
+  }
+
+  function goToNextQuestion() {
+    if (!currentQuestion) {
+      return;
+    }
 
     if (currentIndex === questions.length - 1) {
       setIsFinished(true);
       return;
     }
 
-    setCurrentIndex((index) => index + 1);
-    setAnswer("");
-    setIsChecked(false);
+    moveToQuestion(currentIndex + 1);
   }
 
   function restartWrongQuestions() {
@@ -384,34 +431,48 @@ function TestContent() {
           </label>
 
           <textarea
+            ref={textareaRef}
             id="answer"
             value={answer}
-            disabled={isChecked}
+            readOnly={isChecked}
             onChange={(event) => setAnswer(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === "Enter") {
                 event.preventDefault();
 
-                if (!isChecked && answer.trim() !== "") {
+                if (!isChecked) {
                   submitAnswer();
+                } else {
+                  goToNextQuestion();
                 }
               }
             }}
-            rows={8}
+            rows={2}
             autoFocus
             placeholder="장절에 해당하는 말씀을 입력하세요."
-            className="w-full resize-y rounded-xl border border-slate-300 p-4 text-lg leading-8 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 disabled:bg-slate-100"
+            className="w-full resize-none overflow-hidden rounded-xl border border-slate-300 p-4 text-lg leading-8 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 read-only:bg-slate-100"
           />
 
           {!isChecked ? (
-            <button
-              type="button"
-              disabled={answer.trim() === ""}
-              onClick={submitAnswer}
-              className="mt-5 w-full rounded-xl bg-slate-900 px-5 py-4 font-bold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:bg-slate-300"
-            >
-              채점하기
-            </button>
+            <div className="mt-5 flex gap-3">
+              {currentIndex > 0 && (
+                <button
+                  type="button"
+                  onClick={goToPreviousQuestion}
+                  className="flex-1 rounded-xl border border-slate-300 bg-white px-5 py-4 font-bold hover:bg-slate-100"
+                >
+                  이전 문제
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={submitAnswer}
+                className="flex-1 rounded-xl bg-slate-900 px-5 py-4 font-bold text-white transition hover:bg-slate-700"
+              >
+                채점하기
+              </button>
+            </div>
           ) : (
             <div className="mt-6">
               {currentIsCorrect ? (
@@ -482,15 +543,27 @@ function TestContent() {
                 </div>
               )}
 
-              <button
-                type="button"
-                onClick={goToNextQuestion}
-                className="mt-6 w-full rounded-xl bg-blue-600 px-5 py-4 font-bold text-white hover:bg-blue-500"
-              >
-                {currentIndex === questions.length - 1
-                  ? "결과 보기"
-                  : "다음 문제"}
-              </button>
+              <div className="mt-6 flex gap-3">
+                {currentIndex > 0 && (
+                  <button
+                    type="button"
+                    onClick={goToPreviousQuestion}
+                    className="flex-1 rounded-xl border border-slate-300 bg-white px-5 py-4 font-bold hover:bg-slate-100"
+                  >
+                    이전 문제
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={goToNextQuestion}
+                  className="flex-1 rounded-xl bg-blue-600 px-5 py-4 font-bold text-white hover:bg-blue-500"
+                >
+                  {currentIndex === questions.length - 1
+                    ? "결과 보기"
+                    : "다음 문제"}
+                </button>
+              </div>
             </div>
           )}
         </section>
