@@ -325,6 +325,11 @@ function TestContent() {
       (result) => result.isCorrect
     ).length;
 
+    const correctRate =
+      results.length > 0
+        ? Math.round((correctCount / results.length) * 100)
+        : 0;
+
     return (
       <main className="min-h-screen bg-slate-50 px-5 py-12 text-slate-900">
         <div className="mx-auto max-w-3xl">
@@ -340,6 +345,28 @@ function TestContent() {
             <p className="mt-3 text-slate-600">
               총 {results.length}문제 중 {correctCount}문제를 맞혔습니다.
             </p>
+
+            <div className="mt-8 flex flex-col items-center">
+              <div
+                className="relative flex h-48 w-48 items-center justify-center rounded-full"
+                style={{
+                  background: `conic-gradient(
+                    rgb(37 99 235) ${correctRate}%,
+                    rgb(226 232 240) ${correctRate}% 100%
+                  )`,
+                }}
+              >
+                <div className="flex h-32 w-32 flex-col items-center justify-center rounded-full bg-white">
+                  <span className="text-3xl font-bold text-blue-600">
+                    {correctRate}%
+                  </span>
+
+                  <span className="mt-1 text-sm font-semibold text-slate-500">
+                    정답률
+                  </span>
+                </div>
+              </div>
+            </div>
 
             <div className="mt-8 space-y-3">
               {wrongResults.length > 0 && (
