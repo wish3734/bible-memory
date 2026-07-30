@@ -137,7 +137,7 @@ export default function Home() {
             <p>
               주제:{" "}
               <strong className="text-slate-900">
-                {includeTopic ? "포함" : "미포함"}
+                {includeTopic ? "보기" : "보지 않기"}
               </strong>
             </p>
           </div>
